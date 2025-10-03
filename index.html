@@ -115,6 +115,56 @@
   window.addEventListener("pointerup",()=>{dragging=false;});
   stage.addEventListener("wheel",(e)=>{e.preventDefault();const s=1+Math.sign(e.deltaY)*0.08;camera.position.multiplyScalar(s);},{passive:false});
 
+
+
+    // ====== 點選小方塊 → 顯示自訂文字（無迴圈） ======
+  const ray = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let down = null;
+  
+  // 如果你改成右上角資訊卡，請把這行改為：
+  // const infoEl = document.getElementById('infoBox');
+  const infoEl = document.getElementById('info');
+  
+  function setPointer(e){
+    const r = renderer.domElement.getBoundingClientRect();
+    const p = getXY(e); // 這個函式你上面已經有定義
+    pointer.x = ((p.x - r.left) / r.width) * 2 - 1;
+    pointer.y = -((p.y - r.top) / r.height) * 2 + 1;
+  }
+  
+  stage.addEventListener("pointerdown", (e) => {
+    const p = getXY(e);
+    down = { x: p.x, y: p.y, t: performance.now() };
+  });
+  
+  stage.addEventListener("pointerup", (e) => {
+    if (!down) return;
+    const p = getXY(e);
+    const moved = Math.hypot(p.x - down.x, p.y - down.y);
+    const elapsed = performance.now() - down.t;
+  
+    if (moved <= 6 && elapsed < 500) {
+      setPointer(e);
+      ray.setFromCamera(pointer, camera);
+      const hit = ray.intersectObjects(group.children, false)[0];
+      if (hit) {
+        // 顯示自訂文字（來源：每顆在 addCube 時設定的 userData.labelText）
+        // 如果你的版本沒有 labelText，也可以組一段字：
+        // const g = hit.object.userData.grid;
+        // infoEl.textContent = `座標 (${g.x}, ${g.y}, ${g.z})`;
+        infoEl.textContent = hit.object.userData.labelText ?? '已選取一顆方塊';
+      }
+    }
+    down = null;
+  });
+  
+
+
+
+
+
+  
   /* 右上角按鈕：外層散開 / 還原 */
   let expanded = false;
   function animateTo(cube, to, dur=500){
