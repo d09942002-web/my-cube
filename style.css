@@ -1,90 +1,80 @@
 :root {
   --cube-width: 300px;
-  --translateZ: 150px;
+  --translateZ: 150px;     /* = cube-width / 2 */
 }
 
+* { box-sizing: border-box; }
+html, body { height: 100%; }
 body {
   margin: 0;
-  padding: 0;
-  height: 100vh;
-  font-family: "Poppins", sans-serif;
-  background: #000;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC",
+               "PingFang TC", "Microsoft JhengHei", sans-serif;
+  background: #fff;                 /* 白色背景 */
+  color: #111;
 }
 
-header {
-  color: #eee;
+header.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 24px;
   display: flex;
   align-items: center;
-  height: 100vh;
   justify-content: space-between;
+  gap: 24px;
 }
 
-.container {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-header h1 {
+.left h1 {
   margin: 0;
-  font-size: 100px;
+  font-size: 68px;
+  line-height: 1.05;
+}
+.left .sub-heading {
+  margin: 6px 0 0;
+  font-size: 20px;
+  color: #555;
 }
 
-header .sub-heading {
-  font-size: 24px;
-  margin: 0;
-}
-
+/* 立方體容器：提供視角透視 */
 .cube-container {
   perspective: 1000px;
-}
-
-.cube-container .cube {
   width: var(--cube-width);
   height: var(--cube-width);
-  transform-style: preserve-3d;
+  touch-action: none;           /* 讓觸控拖曳更順 */
+  user-select: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;          /* 置中 cube */
+  background: #fff;
 }
 
-.cube-container .cube-face {
+/* 立方體本體 */
+.cube {
+  position: relative;                 /* ★ 重要：給絕對定位的面一個參考 */
   width: var(--cube-width);
   height: var(--cube-width);
+  transform-style: preserve-3d;       /* 讓子元素保持 3D */
+  transform-origin: 50% 50% calc(var(--cube-width) * -0.5);
+  transform: rotateX(20deg) rotateY(35deg);  /* 初始角度，較有 3D 感 */
+  will-change: transform;
+}
+
+/* 六個面 */
+.cube-face {
   position: absolute;
-  font-size: 30px;
-  background: yellow;
-  color: #000;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cube-container .front {
-  background: #d63946;
-  transform: translateZ(var(--translateZ));
-}
-
-.cube-container .back {
-  background: #06d6a0;
-  transform: rotateY(180deg) translateZ(var(--translateZ));
-}
-
-.cube-container .left {
-  background: #023047;
-  color: #fff;
-  transform: rotateY(-90deg) translateZ(var(--translateZ));
-}
-
-.cube-container .right {
-  background: #3d348b;
-  color: #fff;
-  transform: rotateY(90deg) translateZ(var(--translateZ));
-}
-
-.cube-container .top {
-  background: #a8dadc;
-  transform: rotateX(90deg) translateZ(var(--translateZ));
-}
-
-.cube-container .bottom {
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 24px;
+  color: #111;
   background: #ffd166;
-  transform: rotateX(-90deg) translateZ(var(--translateZ));
+  border: 1px solid #fff;
+  box-shadow: 0 0 0 1px #00000010 inset;
 }
+
+.front  { background:#d63946; color:#fff; transform: translateZ(var(--translateZ)); }
+.back   { background:#06d6a0; transform: rotateY(180deg) translateZ(var(--translateZ)); }
+.left   { background:#023047; color:#fff; transform: rotateY(-90deg) translateZ(var(--translateZ)); }
+.right  { background:#3d348b; color:#fff; transform: rotateY(90deg)  translateZ(var(--translateZ)); }
+.top    { background:#a8dadc; transform: rotateX(90deg)  translateZ(var(--translateZ)); }
+.bottom { background:#ffeb99; transform: rotateX(-90deg) translateZ(var(--translateZ)); }
