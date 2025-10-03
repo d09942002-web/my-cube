@@ -1,80 +1,61 @@
-:root {
-  --cube-width: 300px;
-  --translateZ: 150px;     /* = cube-width / 2 */
-}
-
-* { box-sizing: border-box; }
+/* ====== 全局：白底、67% 縮放 ====== */
 html, body { height: 100%; }
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC",
-               "PingFang TC", "Microsoft JhengHei", sans-serif;
-  background: #fff;                 /* 白色背景 */
+  background: #fff;
   color: #111;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+               "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+/* 首選 zoom，其他瀏覽器用 transform 當備援 */
+.page { zoom: 0.67; }
+@supports not (zoom: 1) {
+  .page { transform: scale(0.67); transform-origin: top left; width: 149.25vw; height: 149.25vh; }
 }
 
-header.container {
-  max-width: 1100px;
-  margin: 0 auto;
+/* 版面：左文右 3D */
+.container {
   min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
   gap: 24px;
 }
 
 .left h1 {
   margin: 0;
-  font-size: 68px;
+  font-size: 64px;
   line-height: 1.05;
 }
-.left .sub-heading {
-  margin: 6px 0 0;
-  font-size: 20px;
+.left .sub {
+  margin: 8px 0 0;
   color: #555;
 }
 
-/* 立方體容器：提供視角透視 */
-.cube-container {
-  perspective: 1000px;
-  width: var(--cube-width);
-  height: var(--cube-width);
-  touch-action: none;           /* 讓觸控拖曳更順 */
-  user-select: none;
+/* 3D 區域 */
+.stage {
+  position: relative;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;          /* 置中 cube */
+  border-radius: 12px;
   background: #fff;
+  min-height: 70vh;
+  touch-action: none;   /* 手勢拖曳更順 */
+  user-select: none;
+}
+.stage canvas { display: block; width: 100%; height: 100%; }
+
+.hint {
+  position: absolute; left: 10px; bottom: 10px;
+  font-size: 12px; color: #374151;
+  background: #ffffffcc; border: 1px solid #e5e7eb;
+  border-radius: 8px; padding: 6px 10px;
+  backdrop-filter: blur(3px);
 }
 
-/* 立方體本體 */
-.cube {
-  position: relative;                 /* ★ 重要：給絕對定位的面一個參考 */
-  width: var(--cube-width);
-  height: var(--cube-width);
-  transform-style: preserve-3d;       /* 讓子元素保持 3D */
-  transform-origin: 50% 50% calc(var(--cube-width) * -0.5);
-  transform: rotateX(20deg) rotateY(35deg);  /* 初始角度，較有 3D 感 */
-  will-change: transform;
+/* RWD：窄螢幕改為上下排 */
+@media (max-width: 900px) {
+  .container { grid-template-columns: 1fr; }
+  .left h1 { font-size: 42px; }
 }
-
-/* 六個面 */
-.cube-face {
-  position: absolute;
-  inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 24px;
-  color: #111;
-  background: #ffd166;
-  border: 1px solid #fff;
-  box-shadow: 0 0 0 1px #00000010 inset;
-}
-
-.front  { background:#d63946; color:#fff; transform: translateZ(var(--translateZ)); }
-.back   { background:#06d6a0; transform: rotateY(180deg) translateZ(var(--translateZ)); }
-.left   { background:#023047; color:#fff; transform: rotateY(-90deg) translateZ(var(--translateZ)); }
-.right  { background:#3d348b; color:#fff; transform: rotateY(90deg)  translateZ(var(--translateZ)); }
-.top    { background:#a8dadc; transform: rotateX(90deg)  translateZ(var(--translateZ)); }
-.bottom { background:#ffeb99; transform: rotateX(-90deg) translateZ(var(--translateZ)); }
