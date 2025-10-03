@@ -3,28 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CSS 3D 立方體</title>
+    <title>3×3×3 方塊（手勢旋轉 + 點選顯示文字）</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header class="container">
-      <div class="left">
-        <h1>Welcome</h1>
-        <p class="sub-heading">to the world of amazing designs</p>
-      </div>
+    <div class="page"><!-- 整頁縮放 67% -->
+      <div class="container">
+        <div class="left">
+          <h1 id="info">請點選任一小方塊</h1>
+          <p class="sub">（用手指/拖曳旋轉視角）</p>
+        </div>
 
-      <div class="cube-container" id="cubeWrap">
-        <div class="cube">
-          <div class="cube-face front">Web Design</div>
-          <div class="cube-face back">App Development</div>
-          <div class="cube-face left">SEO</div>
-          <div class="cube-face right">WordPress</div>
-          <div class="cube-face top">Blogger</div>
-          <div class="cube-face bottom">WooCommerce</div>
+        <div class="stage" id="stage">
+          <!-- three.js 畫布會插入到這裡 -->
+          <div class="hint">拖曳旋轉；滾輪縮放</div>
         </div>
       </div>
-    </header>
+    </div>
 
+    <!-- Three.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
     <script src="main.js"></script>
   </body>
 </html>
