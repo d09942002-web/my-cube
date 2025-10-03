@@ -13,11 +13,11 @@
   .container{min-height:100vh;max-width:1200px;margin:0 auto;padding:24px;display:grid;grid-template-columns:1fr 1.1fr;gap:24px}
   .title{margin:0;font-size:64px;line-height:1.05}
   .sub{margin:8px 0 0;color:#555}
-  .stage{position:relative;border:1px solid #e5e7eb;border-radius:12px;background:#fff;min-height:70vh;touch-action:none;user-select:none}
+  .stage{position:relative;border:1px solid #e5e7eb;border-radius:12px;background:#fff;min-height:70vh;touch-action:none;user-select:none;overflow:hidden}
   .stage canvas{display:block;width:100%;height:100%}
-  .hint{position:absolute;left:10px;bottom:10px;font-size:12px;color:#374151;background:#ffffffcc;border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;backdrop-filter:blur(3px)}
-  /* 右上角按鈕 */
-  .toolbar{position:absolute;right:10px;top:10px;display:flex;gap:8px}
+  .hint{position:absolute;left:10px;bottom:10px;font-size:12px;color:#374151;background:#ffffffcc;border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;backdrop-filter:blur(3px);z-index:5}
+  /* 右上角按鈕（提高 z-index，避免被 canvas 蓋住） */
+  .toolbar{position:absolute;right:10px;top:10px;display:flex;gap:8px;z-index:10}
   .btn{appearance:none;border:1px solid #e5e7eb;background:#fff;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer}
   .btn:active{transform:translateY(1px)}
   @media (max-width:900px){.container{grid-template-columns:1fr}.title{font-size:42px}}
@@ -27,8 +27,8 @@
 <div class="page">
   <div class="container">
     <div>
-      <h1 class="title" id="info">請點選任一小方塊</h1>
-      <p class="sub">（用手指/拖曳旋轉視角；滾輪縮放）</p>
+      <h1 class="title" id="info">3×3×3 方塊</h1>
+      <p class="sub">拖曳旋轉視角；滾輪縮放。右上角可展開/還原外層。</p>
       <noscript style="color:#b91c1c;font-weight:600">此頁需要啟用 JavaScript。</noscript>
     </div>
     <div class="stage" id="stage">
@@ -44,15 +44,14 @@
 <script>
 (function main(){
   const stage = document.getElementById("stage");
-  const info  = document.getElementById("info");
   const explodeBtn = document.getElementById("explodeBtn");
 
-  // ====== 可調參數：變大就改這兩個 ======
-  const CUBE_SIZE = 1.10;   // 小方塊邊長
-  const GAP = 1.26;         // 小方塊排列間距（含縫隙）
-  const EXPLODE_DIST = 2.4; // 展開時往外移動的距離（單位：世界座標）
+  /* ====== 可調參數 ====== */
+  const CUBE_SIZE = 1.10;   // 小方塊邊長（要更大就調這個）
+  const GAP = 1.26;         // 小方塊之間的距離（含縫隙）
+  const EXPLODE_DIST = 2.4; // 外層展開距離（越大展得越開）
 
-  // 場景 + 相機
+  /* 場景 + 相機 + 渲染器 */
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, stage.clientWidth/stage.clientHeight, 0.1, 100);
   camera.position.set(6.6, 6.6, 6.6);
@@ -68,130 +67,38 @@
   scene.add(new THREE.AmbientLight(0xffffff, .85));
   const dir = new THREE.DirectionalLight(0xffffff, .7); dir.position.set(5,7,6); scene.add(dir);
 
-// ====== 幫助函式：做一個平面文字貼到立方體前面（+Z 的那面） ======
-function makeLabelSprite(text, color = '#000000') {
-  const pad = 8;
-  const fontSize = 28;
-
-  // 建立文字畫布
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  ctx.font = `bold ${fontSize}px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif`;
-  const textWidth = Math.ceil(ctx.measureText(text).width);
-  canvas.width  = textWidth + pad * 2;
-  canvas.height = fontSize + pad * 2;
-
-  // 重新設定字型後再畫（因為變更尺寸會重置狀態）
-  ctx.font = `bold ${fontSize}px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif`;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = '#e5e7eb';
-  ctx.strokeRect(0.5, 0.5, canvas.width-1, canvas.height-1);
-  ctx.fillStyle = color;
-  ctx.textBaseline = 'top';
-  ctx.fillText(text, pad, pad);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  const material = new THREE.SpriteMaterial({ map: texture, transparent: false });
-  const sprite = new THREE.Sprite(material);
-
-  // 讓 sprite 大小差不多蓋住一段區域即可（單位世界座標）
-  const scale = 0.9; // 可調
-  sprite.scale.set(canvas.width / 100 * scale, canvas.height / 100 * scale, 1);
-  return sprite;
-}
-
-
-
-
-    
-  // ====== 幫助函式：建立一顆 cube，給定座標 / id / 顏色 / 面上顯示的字 ======
-  function addCube(x, y, z, id, color, labelText) {
-    const mat = new THREE.MeshStandardMaterial({
-      color: color,
-      roughness: 0.4,
-      metalness: 0.0
-    });
-    const cube = new THREE.Mesh(geo, mat);
-  
-    const pos = new THREE.Vector3(x * GAP, y * GAP, z * GAP);
-    cube.position.copy(pos);
-    cube.userData = {
-      id,
-      grid: { x, y, z },
-      labelText,   // 點選時顯示的文字
-      orig: pos.clone()
-    };
-  
-    // 面上加字：放在 +Z 面中央略微外推，避免跟面重疊
-    const label = makeLabelSprite(labelText, '#111');
-    const offset = (CUBE_SIZE / 2) + 0.02;  // 往 +Z 前推一點點
-    label.position.set(0, 0, offset);
-    cube.add(label);
-  
-    group.add(cube);
-    cubes.push(cube);
-  }
-  
-  // ====== 建立 3×3×3（無 for，27 顆逐一列出） ======
+  /* 建立 3×3×3（無任何面上文字／點擊顯示） */
   const group = new THREE.Group(); scene.add(group);
   const geo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
   const cubes = [];
-  
-  // 你可以改顏色（第 5 參數）與面字（第 6 參數）
-  /* 範例色板（你也可自由換色）： */
+
   const RED=0xd63946, GREEN=0x06d6a0, YELLOW=0xffe166, BLUE=0x6ea8ff, PURPLE=0x3d348b, TEAL=0x57d4d4, ORANGE=0xffa94d, PINK=0xff84c1, WHITE=0xffffff;
-  
-  /* 座標順序與 id 對應與你原本相同（x: -1..1, y: -1..1, z: -1..1） */
-  
-  // y = -1 平層
-  addCube(-1,-1,-1, 1, RED,   "Cubie #1 (-1,-1,-1)");
-  addCube(-1,-1, 0, 2, ORANGE,"Cubie #2 (-1,-1, 0)");
-  addCube(-1,-1, 1, 3, YELLOW,"Cubie #3 (-1,-1, 1)");
-  
-  addCube( 0,-1,-1, 4, GREEN, "Cubie #4 ( 0,-1,-1)");
-  addCube( 0,-1, 0, 5, WHITE, "Cubie #5 ( 0,-1, 0)");
-  addCube( 0,-1, 1, 6, TEAL,  "Cubie #6 ( 0,-1, 1)");
-  
-  addCube( 1,-1,-1, 7, BLUE,  "Cubie #7 ( 1,-1,-1)");
-  addCube( 1,-1, 0, 8, PINK,  "Cubie #8 ( 1,-1, 0)");
-  addCube( 1,-1, 1, 9, PURPLE,"Cubie #9 ( 1,-1, 1)");
-  
-  // y = 0 平層
-  addCube(-1, 0,-1,10, TEAL,  "Cubie #10 (-1, 0,-1)");
-  addCube(-1, 0, 0,11, RED,   "Cubie #11 (-1, 0, 0)");
-  addCube(-1, 0, 1,12, ORANGE,"Cubie #12 (-1, 0, 1)");
-  
-  addCube( 0, 0,-1,13, BLUE,  "Cubie #13 ( 0, 0,-1)");
-  addCube( 0, 0, 0,14, WHITE, "Cubie #14 ( 0, 0, 0)");
-  addCube( 0, 0, 1,15, TEAL,  "Cubie #15 ( 0, 0, 1)");
-  
-  addCube( 1, 0,-1,16, PINK,  "Cubie #16 ( 1, 0,-1)");
-  addCube( 1, 0, 0,17, GREEN, "Cubie #17 ( 1, 0, 0)");
-  addCube( 1, 0, 1,18, YELLOW,"Cubie #18 ( 1, 0, 1)");
-  
-  // y = 1 平層
-  addCube(-1, 1,-1,19, ORANGE,"Cubie #19 (-1, 1,-1)");
-  addCube(-1, 1, 0,20, YELLOW,"Cubie #20 (-1, 1, 0)");
-  addCube(-1, 1, 1,21, GREEN, "Cubie #21 (-1, 1, 1)");
-  
-  addCube( 0, 1,-1,22, PURPLE,"Cubie #22 ( 0, 1,-1)");
-  addCube( 0, 1, 0,23, WHITE, "Cubie #23 ( 0, 1, 0)");
-  addCube( 0, 1, 1,24, BLUE,  "Cubie #24 ( 0, 1, 1)");
-  
-  addCube( 1, 1,-1,25, TEAL,  "Cubie #25 ( 1, 1,-1)");
-  addCube( 1, 1, 0,26, PINK,  "Cubie #26 ( 1, 1, 0)");
-  addCube( 1, 1, 1,27, RED,   "Cubie #27 ( 1, 1, 1)");
-  
+
+  function addCube(x, y, z, color){
+    const mat = new THREE.MeshStandardMaterial({ color, roughness:.4, metalness:0 });
+    const cube = new THREE.Mesh(geo, mat);
+    const pos = new THREE.Vector3(x*GAP, y*GAP, z*GAP);
+    cube.position.copy(pos);
+    cube.userData = { grid:{x,y,z}, orig: pos.clone(), target: pos.clone(), t0:0, dur:0, anim:false };
+    group.add(cube); cubes.push(cube);
+  }
+
+  // y = -1
+  addCube(-1,-1,-1, RED);    addCube(-1,-1, 0, ORANGE); addCube(-1,-1, 1, YELLOW);
+  addCube( 0,-1,-1, GREEN);  addCube( 0,-1, 0, WHITE);  addCube( 0,-1, 1, TEAL);
+  addCube( 1,-1,-1, BLUE);   addCube( 1,-1, 0, PINK);   addCube( 1,-1, 1, PURPLE);
+  // y =  0
+  addCube(-1, 0,-1, TEAL);   addCube(-1, 0, 0, RED);    addCube(-1, 0, 1, ORANGE);
+  addCube( 0, 0,-1, BLUE);   addCube( 0, 0, 0, WHITE);  addCube( 0, 0, 1, TEAL);
+  addCube( 1, 0,-1, PINK);   addCube( 1, 0, 0, GREEN);  addCube( 1, 0, 1, YELLOW);
+  // y =  1
+  addCube(-1, 1,-1, ORANGE); addCube(-1, 1, 0, YELLOW); addCube(-1, 1, 1, GREEN);
+  addCube( 0, 1,-1, PURPLE); addCube( 0, 1, 0, WHITE);  addCube( 0, 1, 1, BLUE);
+  addCube( 1, 1,-1, TEAL);   addCube( 1, 1, 0, PINK);   addCube( 1, 1, 1, RED);
+
   group.rotation.set(.4,.6,0);
 
-
-
-
-  
-
-  // ====== 拖曳旋轉（pointer） ======
+  /* 拖曳旋轉（pointer） */
   let dragging=false,lastX=0,lastY=0;
   let rotX=THREE.MathUtils.radToDeg(group.rotation.x);
   let rotY=THREE.MathUtils.radToDeg(group.rotation.y);
@@ -208,51 +115,7 @@ function makeLabelSprite(text, color = '#000000') {
   window.addEventListener("pointerup",()=>{dragging=false;});
   stage.addEventListener("wheel",(e)=>{e.preventDefault();const s=1+Math.sign(e.deltaY)*0.08;camera.position.multiplyScalar(s);},{passive:false});
 
-
-    
-  // ====== 點選小方塊 → 顯示自訂文字（無迴圈） ======
-  const ray = new THREE.Raycaster();
-  const pointer = new THREE.Vector2();
-  let down = null;
-  
-  // 若你顯示文字的元素是右側 infoBox，改成：
-  // const infoEl = document.getElementById('infoBox');
-  const infoEl = document.getElementById('info'); 
-  
-  function setPointer(e){
-    const r = renderer.domElement.getBoundingClientRect();
-    const p = getXY(e);
-    pointer.x = ((p.x - r.left) / r.width) * 2 - 1;
-    pointer.y = -((p.y - r.top) / r.height) * 2 + 1;
-  }
-  
-  stage.addEventListener("pointerdown", (e) => {
-    const p = getXY(e);
-    down = { x: p.x, y: p.y, t: performance.now() };
-  });
-  
-  stage.addEventListener("pointerup", (e) => {
-    if (!down) return;
-    const p = getXY(e);
-    const moved = Math.hypot(p.x - down.x, p.y - down.y);
-    const elapsed = performance.now() - down.t;
-  
-    if (moved <= 6 && elapsed < 500) {
-      setPointer(e);
-      ray.setFromCamera(pointer, camera);
-      const hit = ray.intersectObjects(group.children, false)[0];
-      if (hit) {
-        // 顯示自訂的 labelText
-        infoEl.textContent = hit.object.userData.labelText;
-      }
-    }
-    down = null;
-  });
-
-
-  
-
-  // ====== 右上角按鈕：外層散開 / 還原 ======
+  /* 右上角按鈕：外層散開 / 還原 */
   let expanded = false;
   function animateTo(cube, to, dur=500){
     cube.userData.t0 = performance.now();
@@ -265,10 +128,9 @@ function makeLabelSprite(text, color = '#000000') {
     for(const c of cubes){
       const {x,y,z} = c.userData.grid;
       const isOuter = Math.abs(x)===1 || Math.abs(y)===1 || Math.abs(z)===1;
-      if(!isOuter) { animateTo(c, c.userData.orig, 500); continue; } // 中心層不動
-      // 朝自身所在象限外推
+      if(!isOuter){ animateTo(c, c.userData.orig, 500); continue; } // 中央那顆不動
       const dir = new THREE.Vector3(Math.sign(x), Math.sign(y), Math.sign(z));
-      if (dir.length() === 0) { animateTo(c, c.userData.orig, 500); continue; }
+      if (dir.length() === 0){ animateTo(c, c.userData.orig, 500); continue; }
       dir.normalize();
       const target = c.userData.orig.clone().addScaledVector(dir, EXPLODE_DIST);
       animateTo(c, target, 600);
@@ -283,13 +145,13 @@ function makeLabelSprite(text, color = '#000000') {
     explodeBtn.textContent = expanded ? "還原外層" : "展開外層";
   });
 
-  // ====== Resize 與渲染 ======
+  /* Resize & Render */
   function onResize(){const w=stage.clientWidth,h=stage.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
   window.addEventListener("resize", onResize); onResize();
 
   (function tick(){
     requestAnimationFrame(tick);
-    // 簡單動畫器（線性補間）
+    // 簡易補間動畫
     const now = performance.now();
     for(const c of cubes){
       if(!c.userData.anim) continue;
