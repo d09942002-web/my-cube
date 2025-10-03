@@ -67,34 +67,69 @@
   scene.add(new THREE.AmbientLight(0xffffff, .85));
   const dir = new THREE.DirectionalLight(0xffffff, .7); dir.position.set(5,7,6); scene.add(dir);
 
-  /* 建立 3×3×3（無任何面上文字／點擊顯示） */
+  /* 建立 3×3×3（27 顆逐一列出） */
   const group = new THREE.Group(); scene.add(group);
   const geo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
   const cubes = [];
 
+  // 色票（可自由變更）
   const RED=0xd63946, GREEN=0x06d6a0, YELLOW=0xffe166, BLUE=0x6ea8ff, PURPLE=0x3d348b, TEAL=0x57d4d4, ORANGE=0xffa94d, PINK=0xff84c1, WHITE=0xffffff;
 
-  function addCube(x, y, z, color){
+  // 幫助函式：x,y,z,id,color,labelText（labelText 可自訂顯示文字）
+  function addCube(x, y, z, id, color, labelText) {
     const mat = new THREE.MeshStandardMaterial({ color, roughness:.4, metalness:0 });
     const cube = new THREE.Mesh(geo, mat);
     const pos = new THREE.Vector3(x*GAP, y*GAP, z*GAP);
     cube.position.copy(pos);
-    cube.userData = { grid:{x,y,z}, orig: pos.clone(), target: pos.clone(), t0:0, dur:0, anim:false };
+    cube.userData = {
+      id,
+      grid:{x,y,z},
+      labelText: labelText ?? `已選取一顆方塊 ${id}`,
+      orig: pos.clone(),
+      target: pos.clone(),
+      t0:0, dur:0, anim:false
+    };
     group.add(cube); cubes.push(cube);
   }
 
   // y = -1
-  addCube(-1,-1,-1, RED);    addCube(-1,-1, 0, ORANGE); addCube(-1,-1, 1, YELLOW);
-  addCube( 0,-1,-1, GREEN);  addCube( 0,-1, 0, WHITE);  addCube( 0,-1, 1, TEAL);
-  addCube( 1,-1,-1, BLUE);   addCube( 1,-1, 0, PINK);   addCube( 1,-1, 1, PURPLE);
+  addCube(-1,-1,-1, 1, RED,    "這是 #1 (-1,-1,-1)");
+  addCube(-1,-1, 0, 2, ORANGE, "這是 #2 (-1,-1, 0)");
+  addCube(-1,-1, 1, 3, YELLOW, "這是 #3 (-1,-1, 1)");
+
+  addCube( 0,-1,-1, 4, GREEN,  "這是 #4  ( 0,-1,-1)");
+  addCube( 0,-1, 0, 5, WHITE,  "這是 #5  ( 0,-1, 0)");
+  addCube( 0,-1, 1, 6, TEAL,   "這是 #6  ( 0,-1, 1)");
+
+  addCube( 1,-1,-1, 7, BLUE,   "這是 #7  ( 1,-1,-1)");
+  addCube( 1,-1, 0, 8, PINK,   "這是 #8  ( 1,-1, 0)");
+  addCube( 1,-1, 1, 9, PURPLE, "這是 #9  ( 1,-1, 1)");
+
   // y =  0
-  addCube(-1, 0,-1, TEAL);   addCube(-1, 0, 0, RED);    addCube(-1, 0, 1, ORANGE);
-  addCube( 0, 0,-1, BLUE);   addCube( 0, 0, 0, WHITE);  addCube( 0, 0, 1, TEAL);
-  addCube( 1, 0,-1, PINK);   addCube( 1, 0, 0, GREEN);  addCube( 1, 0, 1, YELLOW);
+  addCube(-1, 0,-1,10, TEAL,   "這是 #10 (-1, 0,-1)");
+  addCube(-1, 0, 0,11, RED,    "這是 #11 (-1, 0, 0)");
+  addCube(-1, 0, 1,12, ORANGE, "這是 #12 (-1, 0, 1)");
+
+  addCube( 0, 0,-1,13, BLUE,   "這是 #13 ( 0, 0,-1)");
+  addCube( 0, 0, 0,14, WHITE,  "這是 #14 ( 0, 0, 0)");
+  addCube( 0, 0, 1,15, TEAL,   "這是 #15 ( 0, 0, 1)");
+
+  addCube( 1, 0,-1,16, PINK,   "這是 #16 ( 1, 0,-1)");
+  addCube( 1, 0, 0,17, GREEN,  "這是 #17 ( 1, 0, 0)");
+  addCube( 1, 0, 1,18, YELLOW, "這是 #18 ( 1, 0, 1)");
+
   // y =  1
-  addCube(-1, 1,-1, ORANGE); addCube(-1, 1, 0, YELLOW); addCube(-1, 1, 1, GREEN);
-  addCube( 0, 1,-1, PURPLE); addCube( 0, 1, 0, WHITE);  addCube( 0, 1, 1, BLUE);
-  addCube( 1, 1,-1, TEAL);   addCube( 1, 1, 0, PINK);   addCube( 1, 1, 1, RED);
+  addCube(-1, 1,-1,19, ORANGE, "這是 #19 (-1, 1,-1)");
+  addCube(-1, 1, 0,20, YELLOW, "這是 #20 (-1, 1, 0)");
+  addCube(-1, 1, 1,21, GREEN,  "這是 #21 (-1, 1, 1)");
+
+  addCube( 0, 1,-1,22, PURPLE, "這是 #22 ( 0, 1,-1)");
+  addCube( 0, 1, 0,23, WHITE,  "這是 #23 ( 0, 1, 0)");
+  addCube( 0, 1, 1,24, BLUE,   "這是 #24 ( 0, 1, 1)");
+
+  addCube( 1, 1,-1,25, TEAL,   "這是 #25 ( 1, 1,-1)");
+  addCube( 1, 1, 0,26, PINK,   "這是 #26 ( 1, 1, 0)");
+  addCube( 1, 1, 1,27, RED,    "這是 #27 ( 1, 1, 1)");
 
   group.rotation.set(.4,.6,0);
 
@@ -115,63 +150,51 @@
   window.addEventListener("pointerup",()=>{dragging=false;});
   stage.addEventListener("wheel",(e)=>{e.preventDefault();const s=1+Math.sign(e.deltaY)*0.08;camera.position.multiplyScalar(s);},{passive:false});
 
-
-
-    // ====== 點選小方塊 → 顯示自訂文字（無迴圈） ======
+  // ====== 點選小方塊 → 顯示自訂文字 ======
   const ray = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   let down = null;
-  
-  // 如果你改成右上角資訊卡，請把這行改為：
-  // const infoEl = document.getElementById('infoBox');
-  const infoEl = document.getElementById('info');
-  
+
+  const infoEl = document.getElementById('info'); // 要改成右上角就指向 infoBox
+
   function setPointer(e){
     const r = renderer.domElement.getBoundingClientRect();
-    const p = getXY(e); // 這個函式你上面已經有定義
+    const p = getXY(e);
     pointer.x = ((p.x - r.left) / r.width) * 2 - 1;
     pointer.y = -((p.y - r.top) / r.height) * 2 + 1;
   }
-  
+
   stage.addEventListener("pointerdown", (e) => {
     const p = getXY(e);
     down = { x: p.x, y: p.y, t: performance.now() };
   });
-  
+
   stage.addEventListener("pointerup", (e) => {
     if (!down) return;
     const p = getXY(e);
     const moved = Math.hypot(p.x - down.x, p.y - down.y);
     const elapsed = performance.now() - down.t;
-  
+
     if (moved <= 6 && elapsed < 500) {
       setPointer(e);
       ray.setFromCamera(pointer, camera);
       const hit = ray.intersectObjects(group.children, false)[0];
       if (hit) {
-        // 顯示自訂文字（來源：每顆在 addCube 時設定的 userData.labelText）
-        // 如果你的版本沒有 labelText，也可以組一段字：
-        // const g = hit.object.userData.grid;
-        // infoEl.textContent = `座標 (${g.x}, ${g.y}, ${g.z})`;
-        infoEl.textContent = hit.object.userData.labelText ?? '已選取一顆方塊';
+        const id = hit.object.userData.id;
+        const text = hit.object.userData.labelText ?? `已選取一顆方塊 ${id}`;
+        infoEl.textContent = text;
       }
     }
     down = null;
   });
-  
 
-
-
-
-
-  
   /* 右上角按鈕：外層散開 / 還原 */
   let expanded = false;
   function animateTo(cube, to, dur=500){
     cube.userData.t0 = performance.now();
     cube.userData.dur = dur;
     cube.userData.from = cube.position.clone();
-    cube.userData.target.copy(to);
+    cube.userData.target = to.clone();
     cube.userData.anim = true;
   }
   function explodeOuter(){
