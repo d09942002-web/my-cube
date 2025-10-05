@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>3×3×3 球體（白底・拖曳旋轉・展開外層）</title>
+<title>3×3×3 球體（科技藍風格）</title>
 <style>
   html,body{height:100%}
   body{margin:0;background:#fff;color:#111;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
@@ -25,7 +25,7 @@
 <div class="page">
   <div class="container">
     <div>
-      <h1 class="title" id="info">3×3×3 球體</h1>
+      <h1 class="title" id="info">3×3×3 球體（科技藍）</h1>
       <p class="sub">拖曳旋轉視角；滾輪縮放。右上角可展開/還原外層。</p>
       <noscript style="color:#b91c1c;font-weight:600">此頁需要啟用 JavaScript。</noscript>
     </div>
@@ -45,9 +45,9 @@
   const explodeBtn = document.getElementById("explodeBtn");
 
   /* ====== 可調參數 ====== */
-  const SPHERE_RADIUS = 0.55;   // 球半徑（直徑約等於你原本 CUBE_SIZE 的 1.10）
+  const SPHERE_RADIUS = 0.55;   // 球半徑
   const GAP = 1.26;             // 球心間距（需 >= 直徑 才不會重疊）
-  const EXPLODE_DIST = 2.4;     // 外層展開距離（越大展得越開）
+  const EXPLODE_DIST = 2.4;     // 外層展開距離
 
   /* 場景 + 相機 + 渲染器 */
   const scene = new THREE.Scene();
@@ -59,25 +59,138 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   renderer.setSize(stage.clientWidth, stage.clientHeight);
   renderer.setClearColor(0xffffff, 1);
+  // 色彩與 tone mapping，讓材質表現更自然
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
   stage.appendChild(renderer.domElement);
 
-  // 光源
-  scene.add(new THREE.AmbientLight(0xffffff, .85));
-  const dir = new THREE.DirectionalLight(0xffffff, .7); dir.position.set(5,7,6); scene.add(dir);
+  /* ====== 背景漸層（CanvasTexture） ====== */
+  function createGradientTexture(){
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
 
-  /* 建立 3×3×3（27 顆） */
+    // 左->中->右 漸層：奶油黃 -> 薄荷綠 -> 淺天空藍（參考你提供的圖）
+    const g = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    g.addColorStop(0, '#fff4a3');
+    g.addColorStop(0.5, '#cff7d6');
+    g.addColorStop(1, '#c6ebff');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 微量雲狀層（增加柔和感）
+    ctx.globalAlpha = 0.06;
+    ctx.fillStyle = '#ffffff';
+    for(let i=0;i<30;i++){
+      const x = Math.random()*canvas.width, y = Math.random()*canvas.height;
+      const r = 70 + Math.random()*160;
+      ctx.beginPath();
+      ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.encoding = THREE.sRGBEncoding;
+    // 設為 EquirectangularReflectionMapping 以便 PMREM 處理
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.needsUpdate = true;
+    return tex;
+  }
+  const gradTex = createGradientTexture();
+  scene.background = gradTex;
+
+  // 加一個倒面大球，讓視覺更包覆（可保留或移除）
+  const envSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(50, 32, 16),
+    new THREE.MeshBasicMaterial({ map: gradTex, side: THREE.BackSide })
+  );
+  envSphere.material.depthWrite = false;
+  scene.add(envSphere);
+
+  /* ====== 環境貼圖（PMREM，強化反射） ====== */
+  const pmremGenerator = new THREE.PMREMGenerator(renderer);
+  pmremGenerator.compileEquirectangularShader();
+  const envRT = pmremGenerator.fromEquirectangular(gradTex);
+  const envMap = envRT.texture;
+  scene.environment = envMap;
+  // note: 不立刻 dispose pmremGenerator/envRT 若在某些環境需要可 later dispose
+
+  /* ====== 光源（柔和 + 科技藍調） ====== */
+  scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+  const hemi = new THREE.HemisphereLight(0xddeeff, 0xfff4a3, 0.9); // sky / ground
+  scene.add(hemi);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.22);
+  dir.position.set(5, 7, 6);
+  scene.add(dir);
+  const fill1 = new THREE.DirectionalLight(0xffffff, 0.08); fill1.position.set(-4,2,3); scene.add(fill1);
+  const fill2 = new THREE.DirectionalLight(0xffffff, 0.06); fill2.position.set(2,-3,-4); scene.add(fill2);
+
+  /* ====== 建立 3×3×3 球體 ====== */
   const group = new THREE.Group(); scene.add(group);
-  // 改成 SphereGeometry
-  const geo = new THREE.SphereGeometry(SPHERE_RADIUS, 32, 16);
+  const geo = new THREE.SphereGeometry(SPHERE_RADIUS, 48, 24);
   const pieces = [];
 
-  // 色票（可自由變更）
-  const RED=0xff9a9a, GREEN=0xcff7d6, YELLOW=0xfff4a3, BLUE=0xc6ebff, PURPLE=0x3d348b, TEAL=0x57d4d4, ORANGE=0xffa94d, PINK=0xff84c1, WHITE=0xffffff;
+  // 科技藍相關顏色（基底、emissive、fresnel）
+  const TECH_BASE = 0x0f6fff;     // 主色
+  const TECH_BASE_2 = 0x0a9eff;   // 稍淺版本
+  const TECH_EMISSIVE = 0x0a9eff; // 自發光色
+  const FRESNEL_COLOR = 0x7fd7ff; // 邊緣光
 
-  function addPiece(x, y, z, id, color, labelText) {
-    // 你可在這裡調整材質外觀（roughness/metalness）
-    const mat = new THREE.MeshStandardMaterial({ color, roughness:0.4, metalness:0 });
+  // 製作未來感材質（MeshPhysicalMaterial + Fresnel）
+  function createTechMaterial(baseHex){
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: baseHex,
+      metalness: 0.28,
+      roughness: 0.18,
+      clearcoat: 0.6,
+      clearcoatRoughness: 0.08,
+      envMap: envMap,
+      envMapIntensity: 1.0,
+      emissive: TECH_EMISSIVE,
+      emissiveIntensity: 0.32,
+      reflectivity: 0.5
+    });
+
+    // 在 shader 中加入簡單的 Fresnel Rim（邊緣光）
+    mat.onBeforeCompile = (shader) => {
+      // 新增 uniform
+      shader.uniforms.fresnelPower = { value: 2.2 };
+      shader.uniforms.fresnelColor = { value: new THREE.Color(FRESNEL_COLOR) };
+
+      // 插入 uniform 定義（在 fragment shader 的開頭加入）
+      shader.fragmentShader = 'uniform float fresnelPower;\nuniform vec3 fresnelColor;\n' + shader.fragmentShader;
+
+      // 找到輸出位置並把 Fresnel 加上去
+      // 這裡尋找 "gl_FragColor = vec4( outgoingLight, diffuseColor.a );"
+      // 並替換為加上 fresnel 的版本
+      const token = 'gl_FragColor = vec4( outgoingLight, diffuseColor.a );';
+      if (shader.fragmentShader.indexOf(token) !== -1) {
+        const replace = [
+          'float viewDot = max(0.0, dot(normalize(normal), normalize(-normalize(vViewPosition))));',
+          'float fresnel = pow(1.0 - viewDot, fresnelPower);',
+          'vec3 fcol = fresnelColor * fresnel * 0.85;',
+          'vec3 finalOutgoing = outgoingLight + fcol * (0.6 + 0.4 * fresnel);',
+          'gl_FragColor = vec4( finalOutgoing, diffuseColor.a );'
+        ].join('\n');
+        shader.fragmentShader = shader.fragmentShader.replace(token, replace);
+      } else {
+        // 如果沒有找到 token（不同 three 版本），嘗試另一替換方式：在結尾附近加入一段
+        shader.fragmentShader = shader.fragmentShader.replace(
+          'void main() {',
+          'void main() {\n  // injected fresnel - fallback'
+        );
+      }
+    };
+
+    mat.needsUpdate = true;
+    return mat;
+  }
+
+  // 幫助函式：新增球體（全部使用科技藍材質，但略微給不同 tint）
+  function addPiece(x, y, z, id, baseHex, labelText) {
+    const mat = createTechMaterial(baseHex);
     const mesh = new THREE.Mesh(geo, mat);
+    // optional: slight vertex normal smoothing is default for sphere
     const pos = new THREE.Vector3(x*GAP, y*GAP, z*GAP);
     mesh.position.copy(pos);
     mesh.userData = {
@@ -88,45 +201,46 @@
       target: pos.clone(),
       t0:0, dur:0, anim:false
     };
-    group.add(mesh); pieces.push(mesh);
+    group.add(mesh);
+    pieces.push(mesh);
   }
 
-  // 依序建立 27 顆（坐標與你原本相同）
-  addPiece(-1,-1,-1, 1, RED,    "這是 #1 (-1,-1,-1)");
-  addPiece(-1,-1, 0, 2, YELLOW, "這是 #2 (-1,-1, 0)");
-  addPiece(-1,-1, 1, 3, RED, "這是 #3 (-1,-1, 1)");
+  // 建立 27 顆球：我們將大部分都使用科技藍色調，但稍作變化（讓視覺有層次）
+  addPiece(-1,-1,-1, 1, TECH_BASE,    "這是 #1 (-1,-1,-1)");
+  addPiece(-1,-1, 0, 2, TECH_BASE_2, "這是 #2 (-1,-1, 0)");
+  addPiece(-1,-1, 1, 3, TECH_BASE,    "這是 #3 (-1,-1, 1)");
 
-  addPiece( 0,-1,-1, 4, YELLOW,  "這是 #4  ( 0,-1,-1)");
-  addPiece( 0,-1, 0, 5, BLUE,  "這是 #5  ( 0,-1, 0)");
-  addPiece( 0,-1, 1, 6, YELLOW,   "這是 #6  ( 0,-1, 1)");
+  addPiece( 0,-1,-1, 4, TECH_BASE_2,  "這是 #4  ( 0,-1,-1)");
+  addPiece( 0,-1, 0, 5, TECH_BASE,    "這是 #5  ( 0,-1, 0)");
+  addPiece( 0,-1, 1, 6, TECH_BASE_2,  "這是 #6  ( 0,-1, 1)");
 
-  addPiece( 1,-1,-1, 7, RED,   "這是 #7  ( 1,-1,-1)");
-  addPiece( 1,-1, 0, 8, YELLOW,   "這是 #8  ( 1,-1, 0)");
-  addPiece( 1,-1, 1, 9, RED, "這是 #9  ( 1,-1, 1)");
+  addPiece( 1,-1,-1, 7, TECH_BASE,    "這是 #7  ( 1,-1,-1)");
+  addPiece( 1,-1, 0, 8, TECH_BASE_2,  "這是 #8  ( 1,-1, 0)");
+  addPiece( 1,-1, 1, 9, TECH_BASE,    "這是 #9  ( 1,-1, 1)");
 
-  addPiece(-1, 0,-1,10, YELLOW,   "這是 #10 (-1, 0,-1)");
-  addPiece(-1, 0, 0,11, BLUE,    "這是 #11 (-1, 0, 0)");
-  addPiece(-1, 0, 1,12, YELLOW, "這是 #12 (-1, 0, 1)");
+  addPiece(-1, 0,-1,10, TECH_BASE_2,  "這是 #10 (-1, 0,-1)");
+  addPiece(-1, 0, 0,11, 0xeceff6,     "這是 #11 (-1, 0, 0)"); // 淺冷灰作對比
+  addPiece(-1, 0, 1,12, TECH_BASE_2,  "這是 #12 (-1, 0, 1)");
 
-  addPiece( 0, 0,-1,13, BLUE,   "這是 #13 ( 0, 0,-1)");
-  addPiece( 0, 0, 0,14, WHITE,  "這是 #14 ( 0, 0, 0)");
-  addPiece( 0, 0, 1,15, BLUE,   "這是 #15 ( 0, 0, 1)");
+  addPiece( 0, 0,-1,13, TECH_BASE,    "這是 #13 ( 0, 0,-1)");
+  addPiece( 0, 0, 0,14, 0xffffff,     "這是 #14 ( 0, 0, 0)"); // 中央可留白
+  addPiece( 0, 0, 1,15, TECH_BASE,    "這是 #15 ( 0, 0, 1)");
 
-  addPiece( 1, 0,-1,16, YELLOW,   "這是 #16 ( 1, 0,-1)");
-  addPiece( 1, 0, 0,17, BLUE,  "這是 #17 ( 1, 0, 0)");
-  addPiece( 1, 0, 1,18, YELLOW, "這是 #18 ( 1, 0, 1)");
+  addPiece( 1, 0,-1,16, TECH_BASE_2,  "這是 #16 ( 1, 0,-1)");
+  addPiece( 1, 0, 0,17, TECH_BASE,    "這是 #17 ( 1, 0, 0)");
+  addPiece( 1, 0, 1,18, TECH_BASE_2,  "這是 #18 ( 1, 0, 1)");
 
-  addPiece(-1, 1,-1,19, RED, "這是 #19 (-1, 1,-1)");
-  addPiece(-1, 1, 0,20, YELLOW, "這是 #20 (-1, 1, 0)");
-  addPiece(-1, 1, 1,21, RED,  "這是 #21 (-1, 1, 1)");
+  addPiece(-1, 1,-1,19, TECH_BASE,    "這是 #19 (-1, 1,-1)");
+  addPiece(-1, 1, 0,20, TECH_BASE_2,  "這是 #20 (-1, 1, 0)");
+  addPiece(-1, 1, 1,21, TECH_BASE,    "這是 #21 (-1, 1, 1)");
 
-  addPiece( 0, 1,-1,22, YELLOW, "這是 #22 ( 0, 1,-1)");
-  addPiece( 0, 1, 0,23, BLUE,  "這是 #23 ( 0, 1, 0)");
-  addPiece( 0, 1, 1,24, YELLOW,   "這是 #24 ( 0, 1, 1)");
+  addPiece( 0, 1,-1,22, TECH_BASE_2,  "這是 #22 ( 0, 1,-1)");
+  addPiece( 0, 1, 0,23, TECH_BASE,    "這是 #23 ( 0, 1, 0)");
+  addPiece( 0, 1, 1,24, TECH_BASE_2,  "這是 #24 ( 0, 1, 1)");
 
-  addPiece( 1, 1,-1,25, RED,   "這是 #25 ( 1, 1,-1)");
-  addPiece( 1, 1, 0,26, YELLOW,   "這是 #26 ( 1, 1, 0)");
-  addPiece( 1, 1, 1,27, RED,    "這是 #27 ( 1, 1, 1)");
+  addPiece( 1, 1,-1,25, TECH_BASE,    "這是 #25 ( 1, 1,-1)");
+  addPiece( 1, 1, 0,26, TECH_BASE_2,  "這是 #26 ( 1, 1, 0)");
+  addPiece( 1, 1, 1,27, TECH_BASE,    "這是 #27 ( 1, 1, 1)");
 
   group.rotation.set(.4,.6,0);
 
