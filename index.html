@@ -7,33 +7,107 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f9fc;
+            color: #333;
+            overflow: hidden; /* 防止版面滾動 */
+        }
+
+        /* 左上角控制按鈕 (無文字，使用圖示) */
+        .rotate-btn {
+            position: fixed;
+            top: 25px;
+            left: 25px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #4a90e2;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 100;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f7f9fc;
-            color: #333;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .rotate-btn:hover { background-color: #357abd; transform: scale(1.05); }
+        .rotate-btn svg { fill: white; width: 26px; height: 26px; }
+
+        /* 主佈局容器 */
+        #app {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            transition: all 0.4s ease;
         }
 
-        /* 主畫面：大圈圈容器 */
-        #main-view {
+        /* === 模式 1：圓形大圈圈模式 === */
+        #app.mode-circle #left-panel {
+            width: 100%;
+            height: 100%;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
         }
-
-        .circle-container {
+        #app.mode-circle #circle-container {
             position: relative;
             width: 400px;
             height: 400px;
-            margin-bottom: 30px;
-            border-radius: 50%;
+        }
+        #app.mode-circle .circle {
+            position: absolute;
+            margin-top: -40px; 
+            margin-left: -40px;
         }
 
-        /* 單個小圈圈 */
+        /* 旋轉動畫 (速度加快為 4 秒) */
+        .rotating { animation: spin 4s linear infinite; }
+        .rotating .circle { animation: spin-reverse 4s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+
+        /* === 模式 2：1:2 垂直清單模式 === */
+        #app.mode-list #left-panel {
+            width: 33.33%;
+            height: 100%;
+            background: #eef2f5;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-y: auto;
+            padding: 40px 0;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        #app.mode-list #circle-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            align-items: center;
+            /* 在清單模式下關閉旋轉 */
+            animation: none !important; 
+            transform: none !important;
+        }
+        #app.mode-list .circle {
+            /* 覆蓋絕對定位，變成一般排版 */
+            position: relative;
+            left: auto !important;
+            top: auto !important;
+            margin: 0;
+            animation: none !important;
+            transform: none !important;
+        }
+        #app.mode-list .circle:hover { transform: scale(1.05) !important; }
+        #app.mode-list .circle.active {
+            box-shadow: 0 0 0 4px #4a90e2, 0 4px 10px rgba(0,0,0,0.1) !important;
+        }
+
+        /* === 共用圈圈樣式 === */
         .circle {
-            position: absolute;
             width: 80px;
             height: 80px;
             border-radius: 50%;
@@ -41,201 +115,215 @@
             justify-content: center;
             align-items: center;
             font-weight: bold;
-            color: #1a1a1a;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            transition: transform 0.2s, background-color 0.4s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s, background-color 0.4s ease, border 0.4s ease, color 0.4s ease;
             user-select: none;
-            /* 讓小圈圈的中心點對齊 */
-            margin-top: -40px;
-            margin-left: -40px; 
+            border: 2px solid transparent;
+            box-sizing: border-box;
+            text-align: center;
+            font-size: 15px;
+            padding: 5px;
+            line-height: 1.2;
         }
 
-        .circle:hover {
-            transform: scale(1.1);
-        }
-
-        /* 旋轉動畫 */
-        .rotating {
-            animation: spin 15s linear infinite;
-        }
-        @keyframes spin {
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* 讓裡面的字保持正向的抵銷動畫 */
-        .rotating .circle {
-            animation: spin-reverse 15s linear infinite;
-        }
-        @keyframes spin-reverse {
-            100% { transform: rotate(-360deg); }
-        }
-
-        /* 控制按鈕 */
-        .control-btn {
-            padding: 10px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 8px;
-            background-color: #4a90e2;
-            color: white;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: background 0.2s;
-        }
-        .control-btn:hover { background-color: #357abd; }
-
-        /* 清單詳細畫面 */
-        #detail-view {
-            display: none;
-            width: 320px;
+        /* === 右側清單面板 === */
+        #right-panel {
+            width: 66.67%;
+            height: 100%;
+            padding: 50px;
+            box-sizing: border-box;
+            display: none; /* 圓形模式下隱藏 */
+            flex-direction: column;
             background: white;
-            padding: 25px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow-y: auto;
         }
+        #app.mode-list #right-panel { display: flex; }
 
-        .header-area { display: flex; align-items: center; margin-bottom: 20px; }
-        .back-btn { margin-right: 15px; cursor: pointer; font-size: 20px; color: #4a90e2; background: none; border: none; }
-        #detail-title { flex-grow: 1; text-align: center; margin: 0; font-size: 24px; color: #333; }
+        .header-area { display: flex; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .back-btn { margin-right: 20px; cursor: pointer; font-size: 16px; padding: 8px 15px; border-radius: 8px; color: #555; background: #eee; border: none; font-weight: bold; }
+        .back-btn:hover { background: #e0e0e0; }
+        #detail-title-text { font-size: 28px; margin: 0; font-weight: 800; }
+        
+        .edit-btn { margin-left: 15px; background: none; border: none; font-size: 20px; cursor: pointer; transition: transform 0.2s; }
+        .edit-btn:hover { transform: scale(1.2); }
 
-        .input-area { display: flex; margin-bottom: 20px; }
-        .input-area input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px 0 0 6px; outline: none; }
-        .input-area button { padding: 10px 15px; border: none; background: #4a90e2; color: white; border-radius: 0 6px 6px 0; cursor: pointer; }
+        .input-area { display: flex; margin-bottom: 30px; }
+        .input-area input { flex-grow: 1; padding: 15px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px 0 0 8px; outline: none; }
+        .input-area input:focus { border-color: #4a90e2; }
+        .input-area button { padding: 15px 25px; font-size: 16px; border: none; background: #4a90e2; color: white; border-radius: 0 8px 8px 0; cursor: pointer; font-weight: bold; }
 
-        .task-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; }
-        .task-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .task-item:last-child { border-bottom: none; }
-        .task-checkbox { margin-right: 12px; width: 18px; height: 18px; cursor: pointer; }
-        .task-text { flex-grow: 1; font-size: 16px; transition: color 0.2s; }
-        .task-item.completed .task-text { text-decoration: line-through; color: #aaa; }
-        .delete-btn { background: none; border: none; color: #ff5252; cursor: pointer; font-weight: bold; }
+        .task-list { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+        .task-item { display: flex; align-items: center; padding: 15px; margin-bottom: 10px; background: #f9fbff; border-radius: 8px; border-left: 4px solid transparent; }
+        .task-checkbox { margin-right: 15px; width: 20px; height: 20px; cursor: pointer; }
+        .task-text { flex-grow: 1; font-size: 18px; transition: color 0.2s; }
+        .task-item.completed { border-left-color: #4a90e2; background: #f2f2f2; }
+        .task-item.completed .task-text { text-decoration: line-through; color: #999; }
+        .delete-btn { background: none; border: none; color: #ff5252; cursor: pointer; font-size: 18px; }
     </style>
 </head>
 <body>
 
-    <div id="main-view">
-        <div class="circle-container" id="circle-container">
-            </div>
-        <button class="control-btn" onclick="toggleRotation()">開始 / 停止旋轉</button>
-    </div>
+    <button class="rotate-btn" id="rotate-btn" onclick="toggleRotation()" title="開啟/停止旋轉">
+        <svg viewBox="0 0 24 24">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+        </svg>
+    </button>
 
-    <div id="detail-view">
-        <div class="header-area">
-            <button class="back-btn" onclick="closeDetail()">◀ 返回</button>
-            <h2 id="detail-title">主題</h2>
-            <div style="width: 20px;"></div> </div>
-        <div class="input-area">
-            <input type="text" id="new-task-input" placeholder="新增事項..." onkeypress="handleKeyPress(event)">
-            <button onclick="addTask()">新增</button>
+    <div id="app" class="mode-circle">
+        
+        <div id="left-panel">
+            <div id="circle-container"></div>
         </div>
-        <ul class="task-list" id="task-list">
-            </ul>
+
+        <div id="right-panel">
+            <div class="header-area">
+                <button class="back-btn" onclick="switchMode('circle')">◀ 返回大圓</button>
+                <h2 id="detail-title-text">主題</h2>
+                <button class="edit-btn" onclick="editTitle()" title="編輯主題">✏️</button>
+            </div>
+            <div class="input-area">
+                <input type="text" id="new-task-input" placeholder="新增待辦事項..." onkeypress="handleKeyPress(event)">
+                <button onclick="addTask()">新增</button>
+            </div>
+            <ul class="task-list" id="task-list"></ul>
+        </div>
     </div>
 
     <script>
-        // 定義 9 個圈圈的資料
-        const circlesData = [
-            { id: 0, title: '健康', hue: 0 },   // 紅色系
-            { id: 1, title: '工作', hue: 40 },  // 橙色系
-            { id: 2, title: '學習', hue: 60 },  // 黃色系
-            { id: 3, title: '家庭', hue: 120 }, // 綠色系
-            { id: 4, title: '理財', hue: 180 }, // 青色系
-            { id: 5, title: '社交', hue: 200 }, // 淺藍系
-            { id: 6, title: '休閒', hue: 240 }, // 藍色系
-            { id: 7, title: '心靈', hue: 280 }, // 紫色系
-            { id: 8, title: '目標', hue: 320 }  // 粉色系
+        // 預設資料 (若 localStorage 沒東西則使用此設定)
+        const defaultCircles = [
+            { id: 0, title: '健康', hue: 0 },   // 紅
+            { id: 1, title: '工作', hue: 40 },  // 橙
+            { id: 2, title: '學習', hue: 60 },  // 黃
+            { id: 3, title: '家庭', hue: 120 }, // 綠
+            { id: 4, title: '理財', hue: 180 }, // 青
+            { id: 5, title: '社交', hue: 200 }, // 淺藍
+            { id: 6, title: '休閒', hue: 240 }, // 藍
+            { id: 7, title: '心靈', hue: 280 }, // 紫
+            { id: 8, title: '目標', hue: 320 }  // 粉
         ];
 
+        // 讀取資料
+        let circlesData = JSON.parse(localStorage.getItem('myCirclesData')) || defaultCircles;
         let tasks = JSON.parse(localStorage.getItem('myCircleTasks')) || {};
         let currentCircleId = null;
         let isRotating = false;
 
-        // 初始化：如果 localStorage 是空的，幫每個 ID 建立空陣列
-        circlesData.forEach(c => {
-            if (!tasks[c.id]) tasks[c.id] = [];
-        });
+        // 初始化任務陣列
+        circlesData.forEach(c => { if (!tasks[c.id]) tasks[c.id] = []; });
 
-        // 保存資料到 LocalStorage
-        function saveTasks() {
+        // 儲存資料
+        function saveData() {
             localStorage.setItem('myCircleTasks', JSON.stringify(tasks));
+            localStorage.setItem('myCirclesData', JSON.stringify(circlesData));
         }
 
-        // 渲染 9 個圈圈
+        // 取得圈圈的顏色樣式 (功能四)
+        function getCircleStyles(id) {
+            const circleTasks = tasks[id];
+            const total = circleTasks.length;
+            const completed = circleTasks.filter(t => t.done).length;
+            const hue = circlesData.find(c => c.id === id).hue;
+
+            if (total === 0) {
+                // 清單為空：白色背景，灰色邊框
+                return { bg: '#ffffff', border: '#cccccc', color: '#333333' };
+            } else if (completed === 0) {
+                // 有清單但未勾選：非常淡的顏色
+                return { bg: `hsl(${hue}, 70%, 94%)`, border: `hsl(${hue}, 70%, 85%)`, color: '#333333' };
+            } else {
+                // 有勾選進度：隨比例加深 (亮度從 85% 降至 45%)
+                const ratio = completed / total;
+                const lightness = 85 - (ratio * 40);
+                // 顏色太深時將文字變為白色
+                const textColor = lightness < 60 ? '#ffffff' : '#333333'; 
+                return { bg: `hsl(${hue}, 70%, ${lightness}%)`, border: 'transparent', color: textColor };
+            }
+        }
+
+        // 渲染圈圈
         function renderCircles() {
             const container = document.getElementById('circle-container');
-            container.innerHTML = ''; // 清空
-            const radius = 160; // 大圓半徑
-            const centerX = 200; // 容器中心 X (400/2)
-            const centerY = 200; // 容器中心 Y (400/2)
+            container.innerHTML = '';
+            const radius = 160;
+            const centerX = 200;
+            const centerY = 200;
 
             circlesData.forEach((circle, index) => {
-                // 計算角度 (減去 Math.PI / 2 讓第一個點出現在 12 點鐘方向)
                 const angle = (index * (360 / 9)) * (Math.PI / 180) - (Math.PI / 2);
                 const x = centerX + radius * Math.cos(angle);
                 const y = centerY + radius * Math.sin(angle);
+                
+                const styles = getCircleStyles(circle.id);
 
-                // 計算完成度以決定顏色深淺
-                const circleTasks = tasks[circle.id];
-                const total = circleTasks.length;
-                const completed = circleTasks.filter(t => t.done).length;
-                const ratio = total === 0 ? 0 : completed / total;
-
-                // 顏色邏輯：亮度 (Lightness) 從 85% (淺) 到 45% (深)
-                const lightness = 85 - (ratio * 40);
-                const bgColor = `hsl(${circle.hue}, 70%, ${lightness}%)`;
-
-                // 建立圈圈元素
                 const div = document.createElement('div');
-                div.className = 'circle';
+                div.className = `circle ${currentCircleId === circle.id ? 'active' : ''}`;
+                
+                // 絕對座標 (僅在 mode-circle 時生效，mode-list 會用 CSS 覆蓋)
                 div.style.left = `${x}px`;
                 div.style.top = `${y}px`;
-                div.style.backgroundColor = bgColor;
+                
+                div.style.backgroundColor = styles.bg;
+                div.style.borderColor = styles.border;
+                div.style.color = styles.color;
                 div.innerText = circle.title;
-                div.onclick = () => openDetail(circle.id);
-
+                
+                div.onclick = () => switchMode('list', circle.id);
                 container.appendChild(div);
             });
         }
 
-        // 開啟詳細清單畫面
-        function openDetail(id) {
-            currentCircleId = id;
-            const circleInfo = circlesData.find(c => c.id === id);
-            
-            document.getElementById('main-view').style.display = 'none';
-            document.getElementById('detail-view').style.display = 'block';
-            document.getElementById('detail-title').innerText = circleInfo.title;
-            
-            // 標題顏色同步為該圈圈的色系
-            document.getElementById('detail-title').style.color = `hsl(${circleInfo.hue}, 70%, 40%)`;
+        // 切換版面模式 (功能二)
+        function switchMode(mode, id = null) {
+            const app = document.getElementById('app');
+            const rotateBtn = document.getElementById('rotate-btn');
 
-            renderTaskList();
+            if (mode === 'list') {
+                app.className = 'mode-list';
+                currentCircleId = id;
+                rotateBtn.style.display = 'none'; // 進入清單模式隱藏旋轉按鈕
+                
+                // 更新右側面板資訊
+                const circleInfo = circlesData.find(c => c.id === id);
+                document.getElementById('detail-title-text').innerText = circleInfo.title;
+                document.getElementById('detail-title-text').style.color = `hsl(${circleInfo.hue}, 70%, 40%)`;
+                
+                renderTaskList();
+            } else {
+                app.className = 'mode-circle';
+                currentCircleId = null;
+                rotateBtn.style.display = 'flex'; // 回到大圓模式顯示按鈕
+            }
+            renderCircles(); // 重新渲染以更新圈圈狀態 (active border)
         }
 
-        // 關閉詳細畫面，返回主畫面
-        function closeDetail() {
-            document.getElementById('detail-view').style.display = 'none';
-            document.getElementById('main-view').style.display = 'flex';
-            currentCircleId = null;
-            renderCircles(); // 重新渲染以更新顏色
+        // 編輯標題 (功能三)
+        function editTitle() {
+            const circle = circlesData.find(c => c.id === currentCircleId);
+            const newTitle = prompt("請輸入新的主題名稱：", circle.title);
+            
+            if (newTitle !== null && newTitle.trim() !== "") {
+                circle.title = newTitle.trim();
+                saveData();
+                document.getElementById('detail-title-text').innerText = circle.title;
+                renderCircles(); // 讓左側列表的圈圈字體也同步更新
+            }
         }
 
-        // 渲染清單項目
+        // 渲染任務清單
         function renderTaskList() {
             const listEl = document.getElementById('task-list');
             listEl.innerHTML = '';
-            
             const currentTasks = tasks[currentCircleId];
 
             currentTasks.forEach((task, index) => {
                 const li = document.createElement('li');
                 li.className = `task-item ${task.done ? 'completed' : ''}`;
-                
                 li.innerHTML = `
                     <input type="checkbox" class="task-checkbox" ${task.done ? 'checked' : ''} onchange="toggleTask(${index})">
                     <span class="task-text">${task.text}</span>
-                    <button class="delete-btn" onclick="deleteTask(${index})">✖</button>
+                    <button class="delete-btn" onclick="deleteTask(${index})" title="刪除">✖</button>
                 `;
                 listEl.appendChild(li);
             });
@@ -247,43 +335,40 @@
             const text = input.value.trim();
             if (text) {
                 tasks[currentCircleId].push({ text: text, done: false });
-                saveTasks();
+                saveData();
                 input.value = '';
                 renderTaskList();
+                renderCircles(); // 更新圈圈顏色
             }
         }
 
-        // 監聽 Enter 鍵新增
-        function handleKeyPress(e) {
-            if (e.key === 'Enter') addTask();
-        }
+        function handleKeyPress(e) { if (e.key === 'Enter') addTask(); }
 
-        // 切換任務完成狀態
+        // 切換任務狀態
         function toggleTask(index) {
             tasks[currentCircleId][index].done = !tasks[currentCircleId][index].done;
-            saveTasks();
+            saveData();
             renderTaskList();
+            renderCircles(); // 更新圈圈顏色
         }
 
         // 刪除任務
         function deleteTask(index) {
             tasks[currentCircleId].splice(index, 1);
-            saveTasks();
+            saveData();
             renderTaskList();
+            renderCircles(); // 更新圈圈顏色
         }
 
-        // 功能三：控制旋轉
+        // 控制旋轉 (功能一)
         function toggleRotation() {
             const container = document.getElementById('circle-container');
             isRotating = !isRotating;
-            if (isRotating) {
-                container.classList.add('rotating');
-            } else {
-                container.classList.remove('rotating');
-            }
+            if (isRotating) container.classList.add('rotating');
+            else container.classList.remove('rotating');
         }
 
-        // 網頁載入時執行
+        // 初始載入
         window.onload = renderCircles;
     </script>
 </body>
